@@ -1,5 +1,12 @@
 #!/usr/bin/env ruby
 # encoding: utf-8
+
+# KindleIssueGenerator (kig.rb)
+#
+# author: orzFly
+# github: http://github.com/orzFly/KindleIssueGenerator
+# license: http://orzfly.com/licenses/mit
+
 module Kernel
   def warning(message)
     warn "#{File.basename($0)}: warning: #{message}"
@@ -39,28 +46,52 @@ module KindleIssueGenerator
 		r ||= ""
 		@content = r
       end
+
+	  def html
+		@html
+	  end
+	  
+	  def plain
+	    @plain
+      end
     end
     
     class HTML < Format
-      def html
-        @content
-      end
-      
-      def plain
-        # strip_tags(@content)
-      end
+	  def initialize(file)
+		super
+		@html = @content
+		@plain = HTML.plain(@content)
+	  end
+	  
+	  def self.plain(c)
+		c.gsub(/<.*?>/, "")
+	  end
     end
     HTM = HTML
     
     class TXT < Format
-      def html
-        "<pre>#{HTMLEntities.new.encode(@content)}</pre>"
-      end
-      
-      def plain
-        @content
-      end
+      def initialize(file)
+		super
+		@html = "<pre>#{HTMLEntities.new.encode(@content)}</pre>"
+		@plain = @content
+	  end
     end
+	
+	class MARKDOWN < Format
+	  def initialize(file)
+		super
+		
+		begin
+		  require 'redcarpet'
+		rescue LoadError
+		  fatal "Need ruby gem: htmlentities"
+		end
+		markdown = Redcarpet::Markdown.new(Redcarpet::Render::HTML, :autolink => true, :space_after_headers => true)
+		@html = markdown.render(@content)
+		@plain = HTML.plain(html)
+	  end
+	end
+	MD = MARKDOWN
   end
 
   class Article
@@ -209,7 +240,7 @@ module KindleIssueGenerator
 </body>
 </html>
 EOF
-
+	  #" this line is for syntax highlight fix
       open File.join(path, "issue.css"), "w" do |io| io.write <<EOF end
 /* For supported css features see: http://www.idpf.org/2007/ops/OPS_2.0_final_spec.html#Section3.0 */
 /* Warn: kindle will strip long tags, so do not use selector may span long tags. */
@@ -389,7 +420,11 @@ EOF
   module Commands
     module Generic
       def self.version
-        puts "#{File.basename($0)} 1.0"
+        puts "#{File.basename($0)}"
+		puts
+		puts "author: orzFly"
+		puts "github: http://github.com/orzFly/KindleIssueGenerator"
+		puts "license: http://orzfly.com/licenses/mit"
       end
       
       def self.usage

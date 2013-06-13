@@ -1,0 +1,1 @@
+Tests run a lot faster without `bundle exec` :)
